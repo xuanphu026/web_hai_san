@@ -4,9 +4,6 @@ import { CartItem } from "../types";
 const apiKey = process.env.API_KEY || '';
 
 // Initialize Gemini
-// Note: In a real production app, you should proxy requests through a backend
-// to avoid exposing the API key if not using a secure environment variable injection system.
-// For this demo, we assume process.env.API_KEY is available.
 const ai = new GoogleGenAI({ apiKey });
 
 export const getChefAdvice = async (
@@ -17,7 +14,7 @@ export const getChefAdvice = async (
     const model = 'gemini-2.5-flash';
     
     // Construct context based on cart
-    let context = "Bạn là một đầu bếp chuyên nghiệp 5 sao chuyên về hải sản Việt Nam và Quốc tế. Hãy trả lời ngắn gọn, thân thiện.";
+    let context = "Bạn là một đầu bếp chuyên nghiệp 5 sao chuyên về hải sản Việt Nam và Quốc tế. Phong cách trả lời: Thân thiện, nhiệt tình, sử dụng các biểu tượng cảm xúc (emoji) phù hợp.";
     
     if (cartItems.length > 0) {
       const itemsList = cartItems.map(item => item.name).join(", ");
@@ -26,16 +23,16 @@ export const getChefAdvice = async (
       context += `\nNgười dùng chưa chọn mua gì.`;
     }
 
-    const prompt = `${context}\n\nCâu hỏi của người dùng: "${query}"\n\nHãy đưa ra gợi ý món ăn hoặc công thức nấu ăn phù hợp.`;
+    const prompt = `${context}\n\nCâu hỏi của người dùng: "${query}"\n\nYêu cầu:\n1. Nếu là công thức nấu ăn, hãy trình bày rõ ràng với phần "Nguyên liệu" (dùng gạch đầu dòng) và "Cách làm" (dùng số thứ tự).\n2. Sử dụng định dạng Markdown (in đậm, danh sách) để bài viết dễ đọc.\n3. Nếu không liên quan đến ẩm thực/hải sản, hãy từ chối khéo léo.`;
 
     const response = await ai.models.generateContent({
       model: model,
       contents: prompt,
     });
 
-    return response.text || "Xin lỗi, tôi không thể nghĩ ra công thức ngay lúc này.";
+    return response.text || "Xin lỗi, bếp trưởng đang bận, bạn thử hỏi lại nhé!";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "Đang có sự cố kết nối với đầu bếp AI. Vui lòng thử lại sau.";
+    return "Đang có sự cố kết nối với đầu bếp AI. Vui lòng kiểm tra mạng hoặc thử lại sau.";
   }
 };

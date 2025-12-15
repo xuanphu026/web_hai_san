@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getChefAdvice } from '../services/geminiService';
 import { CartItem, ChatMessage } from '../types';
-import ReactMarkdown from 'react-markdown'; // Wait, standard React app logic, usually need to install. I'll stick to simple text formatting or assumes it handles basic newlines. Actually, simple text with newlines is safer if I can't guarantee packages. I'll use simple rendering.
+import ReactMarkdown from 'react-markdown';
 
 interface ChefAssistantProps {
   cartItems: CartItem[];
@@ -11,7 +11,7 @@ export const ChefAssistant: React.FC<ChefAssistantProps> = ({ cartItems }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'model', text: 'Xin chào! Tôi là Đầu Bếp AI. Bạn muốn tôi gợi ý món ăn gì từ Tôm, Cua, Cá không?' }
+    { role: 'model', text: 'Xin chào! 👨‍🍳 Tôi là Đầu Bếp AI.\nBạn muốn tôi gợi ý món ăn gì từ **Tôm, Cua, Cá** không?' }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -26,33 +26,27 @@ export const ChefAssistant: React.FC<ChefAssistantProps> = ({ cartItems }) => {
     }
   }, [messages, isOpen]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleSend = async (textOverride?: string) => {
+    const textToSend = textOverride || input;
+    if (!textToSend.trim()) return;
 
-    const userMessage: ChatMessage = { role: 'user', text: input };
+    // Add user message
+    const userMessage: ChatMessage = { role: 'user', text: textToSend };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
-    const responseText = await getChefAdvice(input, cartItems);
+    // Get AI response
+    const responseText = await getChefAdvice(textToSend, cartItems);
     
+    // Add AI message
     setMessages(prev => [...prev, { role: 'model', text: responseText }]);
     setIsLoading(false);
   };
 
-  const suggestBasedOnCart = async () => {
-    if (cartItems.length === 0) {
-      setMessages(prev => [...prev, { role: 'model', text: 'Giỏ hàng bạn đang trống. Hãy chọn vài món hải sản rồi tôi sẽ gợi ý công thức nhé!' }]);
-      return;
-    }
+  const suggestBasedOnCart = () => {
     const query = "Gợi ý món ăn ngon từ những gì tôi có trong giỏ hàng";
-    const userMessage: ChatMessage = { role: 'user', text: query };
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-
-    const responseText = await getChefAdvice(query, cartItems);
-    setMessages(prev => [...prev, { role: 'model', text: responseText }]);
-    setIsLoading(false);
+    handleSend(query);
   };
 
   return (
@@ -80,25 +74,44 @@ export const ChefAssistant: React.FC<ChefAssistantProps> = ({ cartItems }) => {
           </div>
           <div>
             <h3 className="font-bold">Đầu Bếp AI</h3>
-            <p className="text-xs text-ocean-100">Gợi ý công thức nấu ăn</p>
+            <p className="text-xs text-ocean-100">Gợi ý công thức & Mẹo vặt</p>
           </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-grow overflow-y-auto p-4 space-y-3 bg-gray-50">
+        <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50">
           {messages.map((msg, idx) => (
             <div 
               key={idx} 
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div 
-                className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm shadow-sm whitespace-pre-line ${
+                className={`max-w-[90%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
                   msg.role === 'user' 
                     ? 'bg-ocean-600 text-white rounded-br-none' 
                     : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
                 }`}
               >
-                {msg.text}
+                {msg.role === 'user' ? (
+                  msg.text
+                ) : (
+                  <div className="prose prose-sm max-w-none text-gray-800">
+                    <ReactMarkdown 
+                      components={{
+                        ul: ({node, ...props}) => <ul className="list-disc ml-4 mt-1 space-y-1" {...props} />,
+                        ol: ({node, ...props}) => <ol className="list-decimal ml-4 mt-1 space-y-1" {...props} />,
+                        li: ({node, ...props}) => <li className="" {...props} />,
+                        p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                        strong: ({node, ...props}) => <span className="font-bold text-ocean-700" {...props} />,
+                        h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-2" {...props} />,
+                        h2: ({node, ...props}) => <h2 className="text-base font-bold mb-2 text-ocean-800" {...props} />,
+                        h3: ({node, ...props}) => <h3 className="text-sm font-bold mb-1 text-ocean-600" {...props} />,
+                      }}
+                    >
+                      {msg.text}
+                    </ReactMarkdown>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -117,14 +130,14 @@ export const ChefAssistant: React.FC<ChefAssistantProps> = ({ cartItems }) => {
         {/* Action Suggestions */}
         <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 overflow-x-auto whitespace-nowrap scrollbar-hide">
             <button 
-              onClick={suggestBasedOnCart}
+              onClick={() => suggestBasedOnCart()}
               className="inline-flex items-center space-x-1 bg-white border border-ocean-200 text-ocean-600 px-3 py-1 rounded-full text-xs hover:bg-ocean-50 mr-2"
             >
               <i className="fas fa-magic"></i>
               <span>Nấu gì với giỏ hàng?</span>
             </button>
             <button 
-               onClick={() => { setInput("Cách làm tôm hấp bia"); handleSend(); }}
+               onClick={() => handleSend("Cách làm tôm hấp bia")}
               className="inline-flex items-center space-x-1 bg-white border border-ocean-200 text-ocean-600 px-3 py-1 rounded-full text-xs hover:bg-ocean-50"
             >
               <span>Cách làm tôm hấp bia</span>
@@ -142,7 +155,7 @@ export const ChefAssistant: React.FC<ChefAssistantProps> = ({ cartItems }) => {
             className="flex-grow px-4 py-2 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-ocean-500"
           />
           <button 
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!input.trim() || isLoading}
             className="w-10 h-10 rounded-full bg-ocean-600 text-white flex items-center justify-center hover:bg-ocean-700 disabled:opacity-50 transition-colors"
           >
